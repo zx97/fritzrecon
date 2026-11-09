@@ -4,6 +4,13 @@ All notable changes to fritzrecon are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] - 2026-11-09
+
+### Fixed
+
+- GitLab release packaging: install `file`, used to verify that the musl
+  binary is statically linked.
+
 ## [0.1.1] - 2026-11-09
 
 ### Added
@@ -40,5 +47,6 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Anonymised screenshots in the README.
 - GNU Affero General Public License v3.0 or later.
 
+[0.1.2]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.2
 [0.1.1]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.1
 [0.1.0]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.0
