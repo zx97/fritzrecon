@@ -5,7 +5,7 @@
 **SPDX-License-Identifier:** AGPL-3.0-or-later  
 **License:** GNU Affero General Public License v3.0 or later  
 **Author:** Manuel FLURY  
-**Version:** 0.1.4
+**Version:** 0.1.5
 
 Read-only reconciliation for a FRITZ!Box and a Pi-hole, plus explicit cleanup
 of the FRITZ!Box device memory.
@@ -56,15 +56,15 @@ redacted.
 **Hosts** — device list with IP zones, Pi-hole columns, conflicts, detail and
 conflict explanation:
 
-![Hosts screen](docs/screenshots/hosts.png)
+![Hosts screen](https://raw.githubusercontent.com/zx97/fritzrecon/master/docs/screenshots/hosts.png)
 
 **Conflicts** — every reconciliation conflict with severity and explanation:
 
-![Conflicts screen](docs/screenshots/conflicts.png)
+![Conflicts screen](https://raw.githubusercontent.com/zx97/fritzrecon/master/docs/screenshots/conflicts.png)
 
 **Sources** — health and record count of each data source:
 
-![Sources screen](docs/screenshots/sources.png)
+![Sources screen](https://raw.githubusercontent.com/zx97/fritzrecon/master/docs/screenshots/sources.png)
 
 ## Requirements
 
@@ -118,7 +118,7 @@ docker run --rm --network host ghcr.io/zx97/fritzrecon:latest --config /config.t
 ```
 
 To build the packages locally, install `nfpm` and run `make dist`; the output
-is in `dist/`. See [`packaging/README.md`](packaging/README.md) for the CI
+is in `dist/`. See [`packaging/README.md`](https://github.com/zx97/fritzrecon/blob/master/packaging/README.md) for the CI
 details.
 
 ## Configuration

@@ -4,6 +4,15 @@ All notable changes to fritzrecon are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.5] - 2026-11-09
+
+### Changed
+
+- Prepare the crates.io package: exclude CI, container and packaging files
+  from the crate, and use absolute README links so the screenshots render on
+  crates.io.
+- Publish the crate as `fritzrecon` on crates.io.
+
 ## [0.1.4] - 2026-11-09
 
 ### Fixed
@@ -62,6 +71,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Anonymised screenshots in the README.
 - GNU Affero General Public License v3.0 or later.
 
+[0.1.5]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.5
 [0.1.4]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.4
 [0.1.3]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.3
 [0.1.2]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.2
