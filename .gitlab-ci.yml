@@ -26,18 +26,23 @@ build:
 # shared runners are amd64; the GitHub workflow also builds arm64.
 package:
   stage: deploy
-  image: rust:1-bookworm
+  # Ubuntu 24.04 provides a musl-gcc that produces a working static-pie
+  # binary; Debian 12's musl-gcc does not.
+  image: ubuntu:24.04
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "web" && $RELEASE_VERSION
   before_script:
     - apt-get update
-    - apt-get install -y --no-install-recommends musl-tools curl ca-certificates tar gzip xz-utils file
+    - apt-get install -y --no-install-recommends curl ca-certificates build-essential musl-tools tar gzip xz-utils file
+    - curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+    - . "$HOME/.cargo/env"
     - rustup target add x86_64-unknown-linux-musl
   variables:
     CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
   script:
     - set -euo pipefail
+    - . "$HOME/.cargo/env"
     - cargo test --locked
     - cargo build --release --locked --target x86_64-unknown-linux-musl
     - VERSION="${RELEASE_VERSION:-${CI_COMMIT_TAG#v}}"
