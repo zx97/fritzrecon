@@ -82,11 +82,15 @@ release:
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "web" && $RELEASE_VERSION
   script:
-    - set -euo pipefail
-    - VERSION="${RELEASE_VERSION:-${CI_COMMIT_TAG#v}}"
-    - TAG="${CI_COMMIT_TAG:-v$VERSION}"
-    - BASE="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/fritzrecon/$VERSION"
-    - release-cli create --name "fritzrecon $VERSION" --tag-name "$TAG" --description "Release $VERSION. See CHANGELOG.md and README.md." \
+    - |
+      set -euo pipefail
+      VERSION="${RELEASE_VERSION:-${CI_COMMIT_TAG#v}}"
+      TAG="${CI_COMMIT_TAG:-v$VERSION}"
+      BASE="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/fritzrecon/$VERSION"
+      release-cli create \
+        --name "fritzrecon $VERSION" \
+        --tag-name "$TAG" \
+        --description "Release $VERSION. See CHANGELOG.md and README.md." \
         --assets-link "{\"name\":\"fritzrecon-$VERSION-linux-amd64.tar.gz\",\"url\":\"$BASE/fritzrecon-$VERSION-linux-amd64.tar.gz\"}" \
         --assets-link "{\"name\":\"fritzrecon_$VERSION-1_amd64.deb\",\"url\":\"$BASE/fritzrecon_$VERSION-1_amd64.deb\"}" \
         --assets-link "{\"name\":\"fritzrecon-$VERSION-1.x86_64.rpm\",\"url\":\"$BASE/fritzrecon-$VERSION-1.x86_64.rpm\"}" \
