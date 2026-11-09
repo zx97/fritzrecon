@@ -1,11 +1,13 @@
 # fritzrecon
 
 [![CI](https://github.com/zx97/fritzrecon/actions/workflows/ci.yml/badge.svg)](https://github.com/zx97/fritzrecon/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/fritzrecon.svg)](https://crates.io/crates/fritzrecon)
 
 **SPDX-License-Identifier:** AGPL-3.0-or-later  
 **License:** GNU Affero General Public License v3.0 or later  
 **Author:** Manuel FLURY  
-**Version:** 0.1.5
+**Version:** 0.1.5  
+**crates.io:** https://crates.io/crates/fritzrecon
 
 Read-only reconciliation for a FRITZ!Box and a Pi-hole, plus explicit cleanup
 of the FRITZ!Box device memory.
@@ -86,9 +88,9 @@ The result is a single executable (`~5 MB`), `target/release/fritzrecon`.
 Install it in `PATH` with:
 
 ```bash
+cargo install fritzrecon --locked
+# or, from a checkout:
 cargo install --path .
-# or
-install -m 0755 target/release/fritzrecon ~/.local/bin/fritzrecon
 ```
 
 For a fully static binary, install `musl-tools` and the musl target:
