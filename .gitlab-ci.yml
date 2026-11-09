@@ -29,6 +29,7 @@ package:
   image: rust:1-bookworm
   rules:
     - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" && $RELEASE_VERSION
   before_script:
     - apt-get update
     - apt-get install -y --no-install-recommends musl-tools curl ca-certificates tar gzip xz-utils file
@@ -39,13 +40,14 @@ package:
     - set -euo pipefail
     - cargo test --locked
     - cargo build --release --locked --target x86_64-unknown-linux-musl
-    - VERSION="${CI_COMMIT_TAG#v}"
+    - VERSION="${RELEASE_VERSION:-${CI_COMMIT_TAG#v}}"
     - mkdir -p dist "stage/fritzrecon-$VERSION-linux-amd64"
     - cp target/x86_64-unknown-linux-musl/release/fritzrecon dist/fritzrecon-linux-amd64
     - cp dist/fritzrecon-linux-amd64 "stage/fritzrecon-$VERSION-linux-amd64/fritzrecon"
     - cp LICENSE README.md CHANGELOG.md config.example.toml "stage/fritzrecon-$VERSION-linux-amd64/"
     - cp -r docs "stage/fritzrecon-$VERSION-linux-amd64/docs"
     - tar -C stage -czf "dist/fritzrecon-$VERSION-linux-amd64.tar.gz" "fritzrecon-$VERSION-linux-amd64"
+    - file dist/fritzrecon-linux-amd64
     - file dist/fritzrecon-linux-amd64 | grep -q static
     - curl -sSL -o nfpm.tgz "https://github.com/goreleaser/nfpm/releases/download/v2.48.0/nfpm_2.48.0_Linux_x86_64.tar.gz"
     - tar -xzf nfpm.tgz nfpm
@@ -73,11 +75,13 @@ release:
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   rules:
     - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" && $RELEASE_VERSION
   script:
     - set -euo pipefail
-    - VERSION="${CI_COMMIT_TAG#v}"
+    - VERSION="${RELEASE_VERSION:-${CI_COMMIT_TAG#v}}"
+    - TAG="${CI_COMMIT_TAG:-v$VERSION}"
     - BASE="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/fritzrecon/$VERSION"
-    - release-cli create --name "fritzrecon $VERSION" --tag-name "$CI_COMMIT_TAG" --description "Release $VERSION. See CHANGELOG.md and README.md." \
+    - release-cli create --name "fritzrecon $VERSION" --tag-name "$TAG" --description "Release $VERSION. See CHANGELOG.md and README.md." \
         --assets-link "{\"name\":\"fritzrecon-$VERSION-linux-amd64.tar.gz\",\"url\":\"$BASE/fritzrecon-$VERSION-linux-amd64.tar.gz\"}" \
         --assets-link "{\"name\":\"fritzrecon_$VERSION-1_amd64.deb\",\"url\":\"$BASE/fritzrecon_$VERSION-1_amd64.deb\"}" \
         --assets-link "{\"name\":\"fritzrecon-$VERSION-1.x86_64.rpm\",\"url\":\"$BASE/fritzrecon-$VERSION-1.x86_64.rpm\"}" \
@@ -92,13 +96,14 @@ container:
     DOCKER_TLS_CERTDIR: "/certs"
   rules:
     - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web" && $RELEASE_VERSION
   needs:
     - job: package
       artifacts: true
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
-    - VERSION="${CI_COMMIT_TAG#v}"
+    - VERSION="${RELEASE_VERSION:-${CI_COMMIT_TAG#v}}"
     - docker build --build-arg TARGETARCH=amd64 --build-arg VERSION="$VERSION" -t "$CI_REGISTRY_IMAGE:$VERSION" -t "$CI_REGISTRY_IMAGE:latest" .
     - docker push "$CI_REGISTRY_IMAGE:$VERSION"
     - docker push "$CI_REGISTRY_IMAGE:latest"
