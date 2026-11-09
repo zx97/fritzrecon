@@ -4,6 +4,22 @@ All notable changes to fritzrecon are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-11-09
+
+### Added
+
+- Automated release packaging: static amd64/arm64 tarballs, `.deb`, `.rpm`,
+  `SHA256SUMS` and a `ghcr.io/zx97/fritzrecon` container image.
+- Anonymised screenshots in the README.
+- `make dist` and `packaging/build-local.sh` for local artefacts.
+
+### Changed
+
+- Release binaries are built with the musl target and have no runtime library
+  dependencies.
+- The release profile now strips symbols, enables thin LTO and uses one codegen
+  unit.
+
 ## [0.1.0] - 2026-11-09
 
 ### Added
@@ -19,6 +35,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Optional Pi-hole v6 authentication (`PIHOLE_PASS`, `password_file`, TOTP).
 - Configurable IP zones (`[scan.zones]`) and FRITZ!Box factory defaults.
 - Embedded documentation and licence: `--documentation`, `--licence`.
+- Automated release packaging: static amd64/arm64 tarballs, `.deb`, `.rpm`,
+  `SHA256SUMS` and a `ghcr.io/zx97/fritzrecon` container image.
+- Anonymised screenshots in the README.
 - GNU Affero General Public License v3.0 or later.
 
+[0.1.1]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.1
 [0.1.0]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.0

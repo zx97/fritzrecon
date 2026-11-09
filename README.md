@@ -5,7 +5,7 @@
 **SPDX-License-Identifier:** AGPL-3.0-or-later  
 **License:** GNU Affero General Public License v3.0 or later  
 **Author:** Manuel FLURY  
-**Version:** 0.1.0
+**Version:** 0.1.1
 
 Read-only reconciliation for a FRITZ!Box and a Pi-hole, plus explicit cleanup
 of the FRITZ!Box device memory.
@@ -30,22 +30,41 @@ text. Both work offline and without a configuration file.
 
 ## Table of contents
 
-1. [Requirements](#requirements)
-2. [Build and install](#build-and-install)
-3. [Configuration](#configuration)
-4. [Usage](#usage)
-5. [Command-line options](#command-line-options)
-6. [TUI keys](#tui-keys)
-7. [IP zones](#ip-zones)
-8. [Conflict types](#conflict-types)
-9. [Offline vs stale_dns](#offline-vs-stale_dns)
-10. [Pi-hole authentication](#pihole-authentication)
-11. [Without a Pi-hole](#without-a-pihole)
-12. [Safety](#safety)
-13. [Architecture](#architecture)
-14. [Glossary](#glossary)
-15. [Transient FRITZ!Box errors](#transient-fritzbox-errors)
-16. [Licence](#licence)
+1. [Screenshots](#screenshots)
+2. [Requirements](#requirements)
+3. [Build and install](#build-and-install)
+4. [Configuration](#configuration)
+5. [Usage](#usage)
+6. [Command-line options](#command-line-options)
+7. [TUI keys](#tui-keys)
+8. [IP zones](#ip-zones)
+9. [Conflict types](#conflict-types)
+10. [Offline vs stale_dns](#offline-vs-stale_dns)
+11. [Pi-hole authentication](#pihole-authentication)
+12. [Without a Pi-hole](#without-a-pi-hole)
+13. [Safety](#safety)
+14. [Architecture](#architecture)
+15. [Glossary](#glossary)
+16. [Transient FRITZ!Box errors](#transient-fritzbox-errors)
+17. [Licence](#licence)
+
+## Screenshots
+
+The screenshots are anonymised: names, addresses, MACs and device IDs are
+redacted.
+
+**Hosts** — device list with IP zones, Pi-hole columns, conflicts, detail and
+conflict explanation:
+
+![Hosts screen](docs/screenshots/hosts.png)
+
+**Conflicts** — every reconciliation conflict with severity and explanation:
+
+![Conflicts screen](docs/screenshots/conflicts.png)
+
+**Sources** — health and record count of each data source:
+
+![Sources screen](docs/screenshots/sources.png)
 
 ## Requirements
 
@@ -60,7 +79,6 @@ text. Both work offline and without a configuration file.
 
 ```bash
 cargo build --release
-strip target/release/fritzrecon
 ```
 
 The result is a single executable (`~5 MB`), `target/release/fritzrecon`.
@@ -73,9 +91,35 @@ cargo install --path .
 install -m 0755 target/release/fritzrecon ~/.local/bin/fritzrecon
 ```
 
-For a fully static binary, install a musl target and build with
-`x86_64-unknown-linux-musl`. A static glibc binary is not available on this
-host.
+For a fully static binary, install `musl-tools` and the musl target:
+
+```bash
+rustup target add x86_64-unknown-linux-musl
+cargo build --release --target x86_64-unknown-linux-musl
+```
+
+Every release publishes static **amd64/arm64 tarballs**, **.deb** and **.rpm**
+packages plus a `SHA256SUMS` file. Download them from the GitHub or GitLab
+release page, then:
+
+```bash
+# Debian / Ubuntu
+sudo apt install ./fritzrecon_<version>-1_amd64.deb
+
+# RHEL / AlmaLinux / Rocky
+sudo dnf install ./fritzrecon-<version>-1.x86_64.rpm
+
+# Any Linux (tarball)
+tar -xzf fritzrecon-<version>-linux-amd64.tar.gz
+install -m 0755 fritzrecon-<version>-linux-amd64/fritzrecon ~/.local/bin/
+
+# Container
+docker run --rm --network host ghcr.io/zx97/fritzrecon:latest --config /config.toml --json
+```
+
+To build the packages locally, install `nfpm` and run `make dist`; the output
+is in `dist/`. See [`packaging/README.md`](packaging/README.md) for the CI
+details.
 
 ## Configuration
 
@@ -111,11 +155,11 @@ Pi-hole is present.
 ./fritzrecon --json > report.json
 
 # Show what a deletion would do, without sending anything
-./fritzrecon --delete landevice4915 --dry-run
+./fritzrecon --delete landevice1234 --dry-run
 ./fritzrecon --cleanup-inactive --dry-run
 
 # Delete one or more selected UIDs (confirmation required)
-./fritzrecon --delete landevice4915 --delete landevice3157
+./fritzrecon --delete landevice1234 --delete landevice5678
 
 # AVM cleanup_landevices: delete every inactive device
 ./fritzrecon --cleanup-inactive

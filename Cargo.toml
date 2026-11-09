@@ -1,6 +1,6 @@
 [package]
 name = "fritzrecon"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 description = "FRITZ!Box / Pi-hole DNS reconciliation with selective device-memory cleanup"
@@ -12,6 +12,11 @@ readme = "README.md"
 keywords = ["fritzbox", "pihole", "dns", "network", "tui"]
 categories = ["command-line-utilities", "network-programming"]
 exclude = ["/target"]
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 1
 
 [dependencies]
 anyhow = "1.0.104"

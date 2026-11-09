@@ -1,0 +1,207 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, without the leading v (default: Cargo.toml)"
+        required: false
+        type: string
+      publish:
+        description: "Create/update the release and push the container image"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  NFPM_VERSION: "2.48.0"
+
+jobs:
+  # Resolve the version once and verify it matches Cargo.toml.
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          set -euo pipefail
+          CARGO_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ inputs.version }}"
+            [ -n "$V" ] || V="$CARGO_VERSION"
+            echo "publish=${{ inputs.publish }}" >> "$GITHUB_OUTPUT"
+          else
+            V="${GITHUB_REF_NAME#v}"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$V" != "$CARGO_VERSION" ]; then
+            echo "::error::tag/input version $V does not match Cargo.toml $CARGO_VERSION" >&2
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  # Build static musl binaries natively on each architecture.
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install musl toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
+      - name: Test
+        run: cargo test --locked
+      - name: Build static binary
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+        run: cargo build --release --locked --target "${{ matrix.target }}"
+      - name: Stage the tarball
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.version.outputs.version }}"
+          mkdir -p dist "stage/fritzrecon-$VERSION-linux-${{ matrix.arch }}"
+          cp "target/${{ matrix.target }}/release/fritzrecon" \
+             "dist/fritzrecon-linux-${{ matrix.arch }}"
+          cp "dist/fritzrecon-linux-${{ matrix.arch }}" \
+             "stage/fritzrecon-$VERSION-linux-${{ matrix.arch }}/fritzrecon"
+          cp LICENSE README.md CHANGELOG.md config.example.toml \
+             "stage/fritzrecon-$VERSION-linux-${{ matrix.arch }}/"
+          cp -r docs "stage/fritzrecon-$VERSION-linux-${{ matrix.arch }}/docs"
+          tar -C stage -czf "dist/fritzrecon-$VERSION-linux-${{ matrix.arch }}.tar.gz" \
+              "fritzrecon-$VERSION-linux-${{ matrix.arch }}"
+          if ! file "dist/fritzrecon-linux-${{ matrix.arch }}" | grep -q 'static'; then
+            echo "::error::the binary is not statically linked" >&2
+            file "dist/fritzrecon-linux-${{ matrix.arch }}"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fritzrecon-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  # Wrap the static binaries into .deb and .rpm with nfpm.
+  package:
+    needs: [version, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Install nfpm
+        run: |
+          curl -sSL -o nfpm.tgz \
+            "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz"
+          tar -xzf nfpm.tgz nfpm
+          sudo install -m 0755 nfpm /usr/local/bin/nfpm
+      - name: Build .deb and .rpm
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.version.outputs.version }}"
+          for a in amd64 arm64; do
+            case "$a" in
+              amd64) D=amd64; R=x86_64 ;;
+              arm64) D=arm64; R=aarch64 ;;
+            esac
+            rm -rf pkgroot
+            mkdir -p pkgroot
+            cp "dist/fritzrecon-linux-$a" pkgroot/fritzrecon
+            cp LICENSE README.md CHANGELOG.md config.example.toml pkgroot/
+            cp -r docs pkgroot/docs
+            (cd pkgroot && PKG_VERSION="$VERSION" PKG_ARCH="$D" \
+              nfpm package -f "$GITHUB_WORKSPACE/packaging/nfpm.yaml" -p deb -t "$GITHUB_WORKSPACE/dist/")
+            (cd pkgroot && PKG_VERSION="$VERSION" PKG_ARCH="$R" \
+              nfpm package -f "$GITHUB_WORKSPACE/packaging/nfpm.yaml" -p rpm -t "$GITHUB_WORKSPACE/dist/")
+          done
+          (cd dist && sha256sum ./*.tar.gz ./*.deb ./*.rpm > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/SHA256SUMS
+          if-no-files-found: error
+
+  # Attach the packages to the release (creating it from the CHANGELOG).
+  publish:
+    needs: [version, package]
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: dist
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v${{ needs.version.outputs.version }}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            python3 packaging/changelog-section.py \
+              "${{ needs.version.outputs.version }}" > /tmp/notes.md
+            gh release create "$TAG" \
+              --title "fritzrecon ${{ needs.version.outputs.version }}" \
+              --notes-file /tmp/notes.md
+          fi
+          gh release upload "$TAG" dist/* --clobber
+
+  # Multi-arch runtime image from the static binaries.
+  container:
+    needs: [version, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: needs.version.outputs.publish == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ needs.version.outputs.publish == 'true' }}
+          build-args: |
+            VERSION=${{ needs.version.outputs.version }}
+          tags: |
+            ghcr.io/zx97/fritzrecon:${{ needs.version.outputs.version }}
+            ghcr.io/zx97/fritzrecon:latest

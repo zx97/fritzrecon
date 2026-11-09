@@ -1,11 +1,10 @@
-.PHONY: build release clean doc licence check
+.PHONY: build release clean doc licence check dist
 
 build:
 	cargo build
 
 release:
 	cargo build --release
-	strip target/release/fritzrecon
 
 # Print the documentation and licence embedded in the binary.
 doc:
@@ -13,6 +12,10 @@ doc:
 
 licence:
 	@cargo run --quiet -- --licence
+
+# Build the release artefacts (tarball, .deb/.rpm when nfpm is installed).
+dist:
+	packaging/build-local.sh
 
 # Run the tests, build a release binary and verify the embedded texts.
 check:
@@ -24,3 +27,4 @@ check:
 
 clean:
 	cargo clean
+	rm -rf dist stage pkgroot

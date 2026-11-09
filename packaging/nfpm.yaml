@@ -1,0 +1,54 @@
+# nfpm configuration for the .deb and .rpm packages.
+#
+# Run nfpm from a staging directory that contains the files below at these
+# relative paths (the CI calls it "pkgroot"):
+#   fritzrecon  LICENSE  README.md  CHANGELOG.md  config.example.toml
+#
+# The CI sets:
+#   PKG_VERSION  package version, without the leading "v" (e.g. 0.1.0)
+#   PKG_ARCH     target package architecture: amd64/arm64 for deb,
+#                x86_64/aarch64 for rpm
+#
+# Usage:
+#   (cd pkgroot && PKG_VERSION=0.1.0 PKG_ARCH=amd64 \
+#      nfpm package -f ../packaging/nfpm.yaml -p deb -t ../dist/)
+#   (cd pkgroot && PKG_VERSION=0.1.0 PKG_ARCH=x86_64 \
+#      nfpm package -f ../packaging/nfpm.yaml -p rpm -t ../dist/)
+name: fritzrecon
+arch: ${PKG_ARCH}
+platform: linux
+version: ${PKG_VERSION}
+release: "1"
+section: utils
+priority: optional
+maintainer: Manuel FLURY
+vendor: Manuel FLURY
+homepage: https://github.com/zx97/fritzrecon
+license: AGPL-3.0-or-later
+description: |
+  FRITZ!Box / Pi-hole DNS reconciliation with selective device-memory cleanup.
+
+  Compares the FRITZ!Box REST device list, TR-064 Hosts, A/PTR DNS records,
+  Pi-hole v6 local DNS and network tables, and the local ARP table. Provides
+  an interactive TUI, JSON output, selective deletion and AVM cleanup, with a
+  JSON backup before every write.
+
+contents:
+  - src: fritzrecon
+    dst: /usr/bin/fritzrecon
+    file_info:
+      mode: 0755
+  - src: LICENSE
+    dst: /usr/share/doc/fritzrecon/LICENSE
+  - src: README.md
+    dst: /usr/share/doc/fritzrecon/README.md
+  - src: CHANGELOG.md
+    dst: /usr/share/doc/fritzrecon/CHANGELOG.md
+  - src: config.example.toml
+    dst: /usr/share/doc/fritzrecon/config.example.toml
+  - src: docs
+    dst: /usr/share/doc/fritzrecon/docs
+    type: tree
+rpm:
+  group: Applications/System
+  summary: FRITZ!Box / Pi-hole DNS reconciliation TUI

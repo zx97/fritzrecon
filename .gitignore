@@ -1,6 +1,9 @@
 /target
+/dist
+/stage
+/pkgroot
 # Local secrets and machine-specific configuration.
-config.toml
+/config.toml
 *.pass
 credentials*
 # Editor and OS noise.

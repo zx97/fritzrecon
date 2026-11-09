@@ -1,21 +1,104 @@
 stages:
   - test
   - build
+  - deploy
+  - release
 
 test:
   stage: test
-  image: rust:1
+  image: rust:1-bookworm
   script:
     - cargo test --locked
 
 build:
   stage: build
-  image: rust:1
+  image: rust:1-bookworm
   script:
     - cargo build --release --locked
     - ./target/release/fritzrecon --documentation >/dev/null
     - ./target/release/fritzrecon --licence >/dev/null
+
+# ---------------------------------------------------------------------------
+# Release artefacts (tag only)
+# ---------------------------------------------------------------------------
+# The binary is built for x86_64-unknown-linux-musl so it runs on every
+# current Linux distribution without runtime library dependencies. GitLab
+# shared runners are amd64; the GitHub workflow also builds arm64.
+package:
+  stage: deploy
+  image: rust:1-bookworm
+  rules:
+    - if: $CI_COMMIT_TAG
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends musl-tools curl ca-certificates tar gzip xz-utils
+    - rustup target add x86_64-unknown-linux-musl
+  variables:
+    CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+  script:
+    - set -euo pipefail
+    - cargo test --locked
+    - cargo build --release --locked --target x86_64-unknown-linux-musl
+    - VERSION="${CI_COMMIT_TAG#v}"
+    - mkdir -p dist "stage/fritzrecon-$VERSION-linux-amd64"
+    - cp target/x86_64-unknown-linux-musl/release/fritzrecon dist/fritzrecon-linux-amd64
+    - cp dist/fritzrecon-linux-amd64 "stage/fritzrecon-$VERSION-linux-amd64/fritzrecon"
+    - cp LICENSE README.md CHANGELOG.md config.example.toml "stage/fritzrecon-$VERSION-linux-amd64/"
+    - cp -r docs "stage/fritzrecon-$VERSION-linux-amd64/docs"
+    - tar -C stage -czf "dist/fritzrecon-$VERSION-linux-amd64.tar.gz" "fritzrecon-$VERSION-linux-amd64"
+    - file dist/fritzrecon-linux-amd64 | grep -q static
+    - curl -sSL -o nfpm.tgz "https://github.com/goreleaser/nfpm/releases/download/v2.48.0/nfpm_2.48.0_Linux_x86_64.tar.gz"
+    - tar -xzf nfpm.tgz nfpm
+    - install -m 0755 nfpm /usr/local/bin/nfpm
+    - mkdir -p pkgroot
+    - cp dist/fritzrecon-linux-amd64 pkgroot/fritzrecon
+    - cp LICENSE README.md CHANGELOG.md config.example.toml pkgroot/
+    - cp -r docs pkgroot/docs
+    - (cd pkgroot && PKG_VERSION="$VERSION" PKG_ARCH=amd64 nfpm package -f "$CI_PROJECT_DIR/packaging/nfpm.yaml" -p deb -t "$CI_PROJECT_DIR/dist/")
+    - (cd pkgroot && PKG_VERSION="$VERSION" PKG_ARCH=x86_64 nfpm package -f "$CI_PROJECT_DIR/packaging/nfpm.yaml" -p rpm -t "$CI_PROJECT_DIR/dist/")
+    - (cd dist && sha256sum ./*.tar.gz ./*.deb ./*.rpm > SHA256SUMS)
+    - |
+      for f in dist/*.tar.gz dist/*.deb dist/*.rpm dist/SHA256SUMS; do
+        curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          --upload-file "$f" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/fritzrecon/$VERSION/$(basename "$f")"
+      done
   artifacts:
     paths:
-      - target/release/fritzrecon
-    expire_in: 1 week
+      - dist/
+    expire_in: never
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - set -euo pipefail
+    - VERSION="${CI_COMMIT_TAG#v}"
+    - BASE="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/fritzrecon/$VERSION"
+    - release-cli create --name "fritzrecon $VERSION" --tag-name "$CI_COMMIT_TAG" --description "Release $VERSION. See CHANGELOG.md and README.md." \
+        --assets-link "{\"name\":\"fritzrecon-$VERSION-linux-amd64.tar.gz\",\"url\":\"$BASE/fritzrecon-$VERSION-linux-amd64.tar.gz\"}" \
+        --assets-link "{\"name\":\"fritzrecon_$VERSION-1_amd64.deb\",\"url\":\"$BASE/fritzrecon_$VERSION-1_amd64.deb\"}" \
+        --assets-link "{\"name\":\"fritzrecon-$VERSION-1.x86_64.rpm\",\"url\":\"$BASE/fritzrecon-$VERSION-1.x86_64.rpm\"}" \
+        --assets-link "{\"name\":\"SHA256SUMS\",\"url\":\"$BASE/SHA256SUMS\"}"
+
+container:
+  stage: deploy
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - job: package
+      artifacts: true
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - VERSION="${CI_COMMIT_TAG#v}"
+    - docker build --build-arg TARGETARCH=amd64 --build-arg VERSION="$VERSION" -t "$CI_REGISTRY_IMAGE:$VERSION" -t "$CI_REGISTRY_IMAGE:latest" .
+    - docker push "$CI_REGISTRY_IMAGE:$VERSION"
+    - docker push "$CI_REGISTRY_IMAGE:latest"
