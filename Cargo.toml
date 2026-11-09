@@ -1,0 +1,30 @@
+[package]
+name = "fritzrecon"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "FRITZ!Box / Pi-hole DNS reconciliation with selective device-memory cleanup"
+authors = ["Manuel FLURY"]
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/zx97/fritzrecon"
+homepage = "https://github.com/zx97/fritzrecon"
+readme = "README.md"
+keywords = ["fritzbox", "pihole", "dns", "network", "tui"]
+categories = ["command-line-utilities", "network-programming"]
+exclude = ["/target"]
+
+[dependencies]
+anyhow = "1.0.104"
+chrono = "0.4.45"
+clap = { version = "4.5", features = ["derive"] }
+crossterm = "0.29.0"
+dirs = "7.0.0"
+hickory-proto = "0.26.3"
+md-5 = "0.11.0"
+ratatui = "0.30.2"
+rayon = "1.12.0"
+roxmltree = "0.21.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+toml = "1.2.1"
+ureq = { version = "3.5.1", features = ["rustls"] }

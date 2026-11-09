@@ -1,0 +1,47 @@
+[fritz]
+# Web UI / REST base URL (port 80). 192.168.178.1 is the FRITZ!Box factory LAN.
+url = "http://192.168.178.1"
+# TR-064 SOAP base URL (port 49000).
+tr064_url = "http://192.168.178.1:49000"
+# FRITZ!Box user with the "FRITZ!Box settings" permission.
+user = "fritzrecon"
+# Password is read from this file if FRITZ_PASS is not set.
+password_file = "/etc/fritzrecon/fritzrecon.pass"
+password_env = "FRITZ_PASS"
+
+[pihole]
+# Set to false if there is no Pi-hole on the network.
+enabled = true
+url = "http://192.168.178.2"
+
+# Optional authentication (Pi-hole v6 uses a single password, no username).
+# The client logs in via POST /api/auth and sends X-FTL-SID afterwards.
+# password_file = "/etc/fritzrecon/pihole.pass"
+# password_env = "PIHOLE_PASS"
+# totp_file = "/etc/fritzrecon/pihole.totp"
+# totp_env = "PIHOLE_TOTP"
+
+[ui]
+# UI and CLI language: "en" (default) or "fr".
+language = "en"
+
+[scan]
+# Interfaces whose ARP/PTR entries are inspected.
+cidrs = ["192.168.178.0/24"]
+# Timeout per DNS query.
+timeout_ms = 800
+# HTTP timeout (the landevice payload is large).
+http_timeout_ms = 15000
+# Offline devices still present in DNS after this many days are marked
+# stale_dns (informational cleanup candidate, not an error).
+stale_after_days = 30
+
+# Address plan used to label ZONE. Each list accepts CIDRs.
+# Example for a 10.0.0.0/8 network split by usage:
+#   fixed = ["10.0.0.0/24"]
+#   dhcp  = ["10.0.1.0/24"]
+#   vpn   = ["10.0.2.0/24"]
+[scan.zones]
+fixed = ["192.168.178.0/24"]
+dhcp = []
+vpn = []

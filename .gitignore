@@ -1,0 +1,9 @@
+/target
+# Local secrets and machine-specific configuration.
+config.toml
+*.pass
+credentials*
+# Editor and OS noise.
+*.swp
+*.swo
+.DS_Store

@@ -1,0 +1,21 @@
+stages:
+  - test
+  - build
+
+test:
+  stage: test
+  image: rust:1
+  script:
+    - cargo test --locked
+
+build:
+  stage: build
+  image: rust:1
+  script:
+    - cargo build --release --locked
+    - ./target/release/fritzrecon --documentation >/dev/null
+    - ./target/release/fritzrecon --licence >/dev/null
+  artifacts:
+    paths:
+      - target/release/fritzrecon
+    expire_in: 1 week
