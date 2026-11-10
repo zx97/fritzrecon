@@ -159,7 +159,7 @@ jobs:
   # Attach the packages to the release (creating it from the CHANGELOG).
   publish:
     needs: [version, package]
-    if: needs.version.outputs.publish == 'true' && inputs.dry_run != 'true'
+    if: needs.version.outputs.publish == 'true' && !inputs.dry_run
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -186,7 +186,7 @@ jobs:
   # the GitHub and GitLab tag pipelines cannot race on the same version.
   crates:
     needs: [version, build]
-    if: needs.version.outputs.publish == 'true' || inputs.dry_run == 'true'
+    if: needs.version.outputs.publish == 'true' || inputs.dry_run
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     concurrency:
@@ -222,7 +222,7 @@ jobs:
   # Multi-arch runtime image from the static binaries.
   container:
     needs: [version, build]
-    if: inputs.dry_run != 'true'
+    if: !inputs.dry_run
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
