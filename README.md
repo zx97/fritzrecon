@@ -6,7 +6,7 @@
 **SPDX-License-Identifier:** AGPL-3.0-or-later  
 **License:** GNU Affero General Public License v3.0 or later  
 **Author:** Manuel FLURY  
-**Version:** 0.1.5  
+**Version:** 0.1.6  
 **crates.io:** https://crates.io/crates/fritzrecon
 
 Read-only reconciliation for a FRITZ!Box and a Pi-hole, plus explicit cleanup
