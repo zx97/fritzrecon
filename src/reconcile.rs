@@ -751,6 +751,27 @@ pub fn collect_with_progress<F: Fn(&str) + Send>(
             if addresses.len() > 1 {
                 row_conflicts.push("duplicate_a".to_string());
             }
+            // Ghost A record: the name only resolves to addresses this device
+            // does not own. Such a record survives reboots and blocks a fixed
+            // IP assignment for the same address ("already in use").
+            let ghosts = ghost_a_records(&ip, addresses);
+            if !ghosts.is_empty() {
+                row_conflicts.push("stale_a".to_string());
+                conflicts.push(Conflict {
+                    severity: Severity::Error,
+                    kind: "stale_a".into(),
+                    name: name.clone(),
+                    detail: "DNS A record does not match the device IP".into(),
+                    evidence: vec![
+                        format!("Fritz A: {}", ghosts.join(", ")),
+                        format!("Device IP: {ip}"),
+                        format!(
+                            "MAC: {}",
+                            if device.mac.is_empty() { "-" } else { &device.mac }
+                        ),
+                    ],
+                });
+            }
         }
         if let Some(pi_addresses) = pi_a.get(&key) {
             if let Some(fritz_addresses) = fritz_a.get(&key) {
@@ -964,7 +985,7 @@ pub fn collect_with_progress<F: Fn(&str) + Send>(
     })
 }
 
-/// Return true when `ip` belongs to `cidr` (for example `10.0.0.0/24`).
+/// Return true when `ip` belongs to `cidr` (for example `192.0.2.0/24`).
 /// Malformed CIDRs are ignored rather than aborting the report.
 fn cidr_contains(cidr: &str, ip: Ipv4Addr) -> bool {
     let Some((address, prefix)) = cidr.trim().split_once('/') else {
@@ -988,8 +1009,8 @@ fn cidr_contains(cidr: &str, ip: Ipv4Addr) -> bool {
 }
 
 /// Normalise a DNS label for reconciliation: first label, lower case, and
-/// underscores treated like hyphens so `Telephone_Alix` matches
-/// `telephone-alix`.
+/// underscores treated like hyphens so `Example_Host` matches
+/// `example-host`.
 fn normalize_label(value: &str) -> String {
     value
         .trim()
@@ -999,6 +1020,33 @@ fn normalize_label(value: &str) -> String {
         .unwrap_or("")
         .to_ascii_lowercase()
         .replace('_', "-")
+}
+
+/// Return the FRITZ!Box A records that are ghost values for a device.
+///
+/// A name may legitimately resolve to several addresses (LAN plus VPN alias),
+/// but at least one of them must be the device's current IP. When none of the
+/// A records matches the device IP, the name resolves exclusively to addresses
+/// the device does not own: a leftover record from an old lease or an old
+/// fixed assignment. Such a ghost record keeps the box's address database
+/// busy and makes a later fixed-IP assignment fail with "already in use",
+/// even though no device holds that address any more.
+///
+/// An empty device IP or an empty record set yields an empty result: there is
+/// nothing reliable to compare.
+fn ghost_a_records(device_ip: &str, addresses: &[String]) -> Vec<String> {
+    let device_ip = device_ip.trim();
+    if device_ip.is_empty() || addresses.is_empty() {
+        return Vec::new();
+    }
+    if addresses.iter().any(|address| address.trim() == device_ip) {
+        return Vec::new();
+    }
+    addresses
+        .iter()
+        .map(|address| address.trim().to_string())
+        .filter(|address| !address.is_empty())
+        .collect()
 }
 
 fn format_last_seen(device: &Device) -> String {
@@ -1143,7 +1191,31 @@ mod tests {
     #[test]
     fn labels_are_normalised_for_matching() {
         assert_eq!(normalize_label("Example-Host.lan."), "example-host");
-        assert_eq!(normalize_label("Telephone_Alix"), "telephone-alix");
+        assert_eq!(normalize_label("Example_Host"), "example-host");
         assert_eq!(normalize_label("  "), "");
+    }
+
+    #[test]
+    fn ghost_a_records_report_a_stale_address() {
+        // The device moved to 192.0.2.9, the box still answers 192.0.2.5
+        // for its name.
+        let addresses = vec!["192.0.2.5".to_string()];
+        assert_eq!(
+            ghost_a_records("192.0.2.9", &addresses),
+            vec!["192.0.2.5".to_string()]
+        );
+    }
+
+    #[test]
+    fn ghost_a_records_accept_a_legitimate_alias() {
+        // LAN plus VPN alias: one record is the device itself, nothing stale.
+        let addresses = vec!["192.0.2.9".to_string(), "198.51.100.4".to_string()];
+        assert!(ghost_a_records("192.0.2.9", &addresses).is_empty());
+    }
+
+    #[test]
+    fn ghost_a_records_need_comparable_input() {
+        assert!(ghost_a_records("", &["192.0.2.5".to_string()]).is_empty());
+        assert!(ghost_a_records("192.0.2.9", &[]).is_empty());
     }
 }

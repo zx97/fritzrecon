@@ -4,6 +4,17 @@ All notable changes to fritzrecon are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.7] - 2026-11-13
+
+### Added
+
+- `stale_a` conflict: a device whose FRITZ!Box A records do not include its
+  current IP. The name resolves only to addresses the device no longer owns,
+  which is a leftover from an old lease or fixed assignment. Such a record
+  survives reboots and makes a fixed-IP assignment on that address fail with
+  "already in use" while the device list shows nothing. Reported as an error
+  and as a row flag.
+
 ## [0.1.6] - 2026-11-10
 
 ### Changed
@@ -80,6 +91,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Anonymised screenshots in the README.
 - GNU Affero General Public License v3.0 or later.
 
+[0.1.7]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.7
 [0.1.6]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.6
 [0.1.5]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.5
 [0.1.4]: https://github.com/zx97/fritzrecon/releases/tag/v0.1.4

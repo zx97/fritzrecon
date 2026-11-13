@@ -6,7 +6,7 @@
 **SPDX-License-Identifier:** AGPL-3.0-or-later  
 **License:** GNU Affero General Public License v3.0 or later  
 **Author:** Manuel FLURY  
-**Version:** 0.1.6  
+**Version:** 0.1.7  
 **crates.io:** https://crates.io/crates/fritzrecon
 
 Read-only reconciliation for a FRITZ!Box and a Pi-hole, plus explicit cleanup
@@ -24,7 +24,8 @@ to an IP that no longer exists?** It compares:
 - the local ARP table.
 
 It reports duplicate names, DNS-only records, stale Pi-hole entries, PTR
-mismatches, IP collisions, stale DNS entries and protected entries.
+mismatches, IP collisions, stale A records, stale DNS entries and protected
+entries.
 
 The binary embeds this documentation and the licence: `fritzrecon
 --documentation` prints this file, `fritzrecon --licence` prints the AGPLv3
@@ -246,9 +247,9 @@ Example for a network split by usage:
 
 ```toml
 [scan.zones]
-fixed = ["10.0.0.0/24"]
-dhcp  = ["10.0.1.0/24"]
-vpn   = ["10.0.2.0/24"]
+fixed = ["192.0.2.0/24"]
+dhcp  = ["198.51.100.0/24"]
+vpn   = ["203.0.113.0/24"]
 ```
 
 Each list accepts one or more CIDRs. An address matched by no list is
@@ -269,6 +270,7 @@ changes. This is normal but explains many duplicate entries.
 | Code | Severity | Meaning |
 |---|---|---|
 | `dns_only` | error | A DNS name exists in the FRITZ!Box or Pi-hole but has no device entry |
+| `stale_a` | error | A name resolves only to addresses the device does not own: leftover record (also a row flag) |
 | `pi_mismatch` | error | The same name resolves to different IPs in the FRITZ!Box and the Pi-hole |
 | `ip_collision` | error | Two names claim the same IP |
 | `duplicate_name` | warning | The same name appears twice in the same IP zone |

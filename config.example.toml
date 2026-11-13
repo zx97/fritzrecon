@@ -37,10 +37,10 @@ http_timeout_ms = 15000
 stale_after_days = 30
 
 # Address plan used to label ZONE. Each list accepts CIDRs.
-# Example for a 10.0.0.0/8 network split by usage:
-#   fixed = ["10.0.0.0/24"]
-#   dhcp  = ["10.0.1.0/24"]
-#   vpn   = ["10.0.2.0/24"]
+# Example for a network split by usage (RFC 5737 documentation addresses):
+#   fixed = ["192.0.2.0/24"]
+#   dhcp  = ["198.51.100.0/24"]
+#   vpn   = ["203.0.113.0/24"]
 [scan.zones]
 fixed = ["192.168.178.0/24"]
 dhcp = []

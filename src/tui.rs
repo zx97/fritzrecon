@@ -1291,6 +1291,7 @@ impl App {
                             | "pi_mismatch"
                             | "lan_localhost"
                             | "duplicate_name"
+                            | "stale_a"
                     )
                 }) {
                     Style::default().fg(Color::Red)
@@ -1731,6 +1732,10 @@ impl App {
             "duplicate_a" => self.tr.t(
                 "The FRITZ!Box DNS returns several A records for this name.",
                 "Le DNS FRITZ!Box renvoie plusieurs enregistrements A pour ce nom.",
+            ),
+            "stale_a" => self.tr.t(
+                "The FRITZ!Box DNS returns only addresses this device does not own: a leftover record from an old lease or fixed assignment. It survives reboots and makes a fixed-IP assignment on that address fail with 'already in use'. Delete the device entry (or re-register the device over DHCP) to clear it.",
+                "Le DNS FRITZ!Box ne renvoie que des adresses que cet appareil ne possède pas : un enregistrement résiduel d'un ancien bail ou d'une ancienne IP fixe. Il survit aux redémarrages et fait échouer l'attribution d'une IP fixe sur cette adresse (« déjà utilisée »). Supprimez l'entrée de l'appareil (ou réenregistrez-le en DHCP) pour l'effacer.",
             ),
             "pi_mismatch" => self.tr.t(
                 "Pi-hole and FRITZ!Box return different A records.",
